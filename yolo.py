@@ -189,7 +189,7 @@ def detect_video(yolo, src_path, out_path=None, boxes_path=None, show_output=Tru
 
     if write_output_to_file:
         # print("!!! TYPE:", type(output_path), type(video_FourCC), type(video_fps), type(video_size))
-        out = cv2.VideoWriter(out_path, video_FourCC, video_fps, video_size)
+        out = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*'XVID'), video_fps, video_size)
 
     accum_time = 0
     curr_fps = 0
@@ -204,7 +204,7 @@ def detect_video(yolo, src_path, out_path=None, boxes_path=None, show_output=Tru
         image = Image.fromarray(frame)
         image, boxes = yolo.detect_image(image, render_boxes=render_boxes)
         if write_boxes_to_file:
-            total_boxes += [[frame_no] + x for x in boxes]
+            total_boxes += [tuple([frame_no] + x) for x in boxes]
 
         result = np.asarray(image)
         curr_time = timer()
@@ -229,8 +229,20 @@ def detect_video(yolo, src_path, out_path=None, boxes_path=None, show_output=Tru
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+    # frame, top, left, bottom, right, predicted_class, score
+    dtypes = [
+        ('frame', 'i4'),
+        ('top', 'i4'),
+        ('left', 'i4'),
+        ('bottom', 'i4'),
+        ('right', 'i4'),
+        ('predicted_class', '|S20'),
+        ('score', 'f4')
+    ]
+
     # save total boxes to box path but convert to structured array before
     if write_boxes_to_file:
+        total_boxes = np.array(total_boxes, dtype=dtypes)
         np.save(boxes_path, total_boxes)
 
     yolo.close_session()
